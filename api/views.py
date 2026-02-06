@@ -179,3 +179,35 @@ def student_attendance_percentage(request, student_id):
         "student": student.registration_number,
         "attendance": result
     })
+
+import base64
+from faces.models import FaceEncoding
+
+@csrf_exempt
+def register_face(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Only POST allowed"}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        student_id = data.get("student_id")
+        encoding_b64 = data.get("encoding")
+    except Exception:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    if not student_id or not encoding_b64:
+        return JsonResponse({"error": "Missing fields"}, status=400)
+
+    try:
+        student = Student.objects.get(id=student_id)
+    except Student.DoesNotExist:
+        return JsonResponse({"error": "Student not found"}, status=404)
+
+    encoding_bytes = base64.b64decode(encoding_b64)
+
+    FaceEncoding.objects.update_or_create(
+        student=student,
+        defaults={"encoding": encoding_bytes}
+    )
+
+    return JsonResponse({"message": "Face encoding stored successfully"})
